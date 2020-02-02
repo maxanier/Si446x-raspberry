@@ -17,3 +17,19 @@ void spi_init()
     bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_65536); /* default */ //TODO switch to 128 or lower (down to 16)
     bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);      /* default */
 }
+
+void spi_transfer_nr(unsigned char data) {
+    bcm2835_spi_transfer(data);
+}
+
+char spi_transfer(unsigned char data) {
+    return bcm2835_spi_transfer(data);
+}
+
+void spiSelect() {
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS0);                      /* default */
+}
+
+void spiDeselect() {
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE );                      /* default */
+}

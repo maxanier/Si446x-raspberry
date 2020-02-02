@@ -49,8 +49,8 @@
 // Pin stuff
 ///////////////////
 
-#define SI446X_IRQ_PIN 1
-#define SI446X_SDN_PIN 1
+#define SI446X_IRQ_PIN RPI_V2_GPIO_P1_11
+#define SI446X_SDN_PIN RPI_V2_GPIO_P1_13
 
 
 

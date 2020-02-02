@@ -13,24 +13,12 @@
 
 void spi_init(void);
 
-inline void spi_transfer_nr(unsigned char data)
-{
-    bcm2835_spi_transfer(data);
-}
+inline void spi_transfer_nr(unsigned char data);
 
-inline char spi_transfer(unsigned char data)
-{
-    return bcm2835_spi_transfer(data);
-}
+inline char spi_transfer(unsigned char data);
 
-inline void spiSelect()
-{
-    bcm2835_spi_chipSelect(BCM2835_SPI_CS0);                      /* default */
-}
+inline void spiSelect();
 
-inline void spiDeselect()
-{
-    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE );                      /* default */
-}
+inline void spiDeselect();
 
 #endif /* SI446X_SPI_H_ */
