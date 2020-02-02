@@ -12,7 +12,7 @@
 // If other libraries communicate with SPI devices while inside an interrupt then set this to 1, otherwise you can set this to 0
 // If you're not sure then leave this at 1
 // If this is 1 then global interrupts will be turned off when this library uses the SPI bus
-#define SI446X_INT_SPI_COMMS 1
+#define SI446X_INT_SPI_COMMS 0
 
 // ADC Conversion time
 // 1 - 15
@@ -49,30 +49,8 @@
 // Pin stuff
 ///////////////////
 
-// Arduino pin assignments
-#define SI446X_CSN			10
-#define SI446X_SDN			5
-#define SI446X_IRQ			2 // This needs to be an interrupt pin
-
-
-
-
-
-// --------------------------------------
-// Everything below here is for non-Arduino stuff
-// --------------------------------------
-
-// SPI slave select pin
-#define SI446X_CSN_PORT		B
-#define SI446X_CSN_BIT		2
-
-// Shutdown pin
-#define SI446X_SDN_PORT		D
-#define SI446X_SDN_BIT		5
-
-// Interrupt pin
-#define SI446X_IRQ_PORT		D
-#define SI446X_IRQ_BIT		2
+#define SI446X_IRQ_PIN 1
+#define SI446X_SDN_PIN 1
 
 
 
@@ -132,7 +110,7 @@
 // If this is 0 make sure to call Si446x_SERVICE() as often as possible so that the library can process radio events
 // 0 = Off, run callbacks from Si446x_SERVICE()
 // 1 = On, run callbacks from interrupt
-#define SI446X_INTERRUPTS 1 // DO NOT CHANGE
+#define SI446X_INTERRUPTS 0 // DO NOT CHANGE
 
 
 #endif /* SI443X_CONFIG_H_ */

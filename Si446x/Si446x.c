@@ -6,20 +6,12 @@
  * Web: http://blog.zakkemble.co.uk/si4463-radio-library-avr-arduino/
  */
 
-#ifdef ARDUINO
-#include <Arduino.h>
-#include <SPI.h>
-#else
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <avr/pgmspace.h>
-#include <util/atomic.h>
-#include <util/delay.h>
+
 #include "Si446x_spi.h"
-#endif
 
 #include <string.h>
 #include <stdint.h>
+#include <bcm2835.h>
 #include "Si446x.h"
 #include "Si446x_config.h"
 #include "Si446x_defs.h"
@@ -46,21 +38,12 @@
 	#endif
 #endif
 
-#ifdef ARDUINO
-#define	delay_ms(ms)			delay(ms)
-#define delay_us(us)			delayMicroseconds(us)
-#define spiSelect()				(digitalWrite(SI446X_CSN, LOW))
-#define spiDeselect()			(digitalWrite(SI446X_CSN, HIGH))
-#define spi_transfer_nr(data)	(SPI.transfer(data))
-#define spi_transfer(data)		(SPI.transfer(data))
-#else
-#define	delay_ms(ms)			_delay_ms(ms)
-#define delay_us(us)			_delay_us(us)
-#define spiSelect()				(CSN_PORT &= ~_BV(CSN_BIT))
-#define spiDeselect()			(CSN_PORT |= _BV(CSN_BIT))
-#endif
+#define delay_ms(ms)			bcm2835_delay(ms)
+#define delay_us(us)			bcm2835_delayMicroseconds(us)
+#define PROGMEM
 
-static const uint8_t config[] PROGMEM = RADIO_CONFIGURATION_DATA_ARRAY;
+
+static const uint8_t config[] = RADIO_CONFIGURATION_DATA_ARRAY;
 
 static volatile uint8_t enabledInterrupts[3];
 
@@ -129,7 +112,6 @@ static inline uint8_t interrupt_on(void)
 
 static inline uint8_t cselect(void)
 {
-//	spi_enable();
 	spiSelect();
 	return 1;
 }
@@ -137,7 +119,6 @@ static inline uint8_t cselect(void)
 static inline uint8_t cdeselect(void)
 {
 	spiDeselect();
-//	spi_disable();
 	return 0;
 }
 
@@ -153,10 +134,8 @@ static inline uint8_t cdeselect(void)
 // Otherwise, just turn off our own radio interrupt while doing SPI stuff.
 #if SI446X_INTERRUPTS == 0 && SI446X_INT_SPI_COMMS == 0
 #define SI446X_ATOMIC() ((void)(0));
-#elif defined(ARDUINO)
-#define SI446X_ATOMIC() for(uint8_t _cs2 = interrupt_off(); _cs2; _cs2 = interrupt_on())
 #else
-#define SI446X_ATOMIC()	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+#define SI446X_ATOMIC() for(uint8_t _cs2 = interrupt_off(); _cs2; _cs2 = interrupt_on())
 #endif
 
 // When doing SPI comms with the radio or doing multiple commands we don't want the radio interrupt to mess it up.
@@ -437,17 +416,10 @@ static void interrupt2(void* buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t 
 // Reset the RF chip
 static void resetDevice(void)
 {
-#ifdef ARDUINO
-	digitalWrite(SI446X_SDN, HIGH);
+    bcm2835_gpio_set(SI446X_SDN_PIN);
 	delay_ms(50);
-	digitalWrite(SI446X_SDN, LOW);
+    bcm2835_gpio_clr(SI446X_SDN_PIN);
 	delay_ms(50);
-#else
-	SDN_PORT |= _BV(SDN_BIT);
-	delay_ms(50);
-	SDN_PORT &= ~_BV(SDN_BIT);
-	delay_ms(50);
-#endif
 }
 
 /*
@@ -466,7 +438,7 @@ static void applyStartupConfig(void)
 	uint8_t buff[17];
 	for(uint16_t i=0;i<sizeof(config);i++)
 	{
-		memcpy_P(buff, &config[i], sizeof(buff));
+		memcpy(buff, &config[i], sizeof(buff));
 		doAPI(&buff[1], buff[0], NULL, 0);
 		i += buff[0];
 	}
@@ -474,30 +446,17 @@ static void applyStartupConfig(void)
 
 void Si446x_init()
 {
+    bcm2835_init();
 	spiDeselect();
-#ifdef ARDUINO
-	pinMode(SI446X_CSN, OUTPUT);
-	pinMode(SI446X_SDN, OUTPUT);
-#if SI446X_IRQ != -1
-	pinMode(SI446X_IRQ, INPUT_PULLUP);
-#endif
-	
-	SPI.begin();
-#else
-	CSN_DDR |= _BV(CSN_BIT);
-	SDN_DDR |= _BV(SDN_BIT);
 
-#ifdef IRQ_BIT
-	// Interrupt pin (input with pullup)
-#if defined(PUEA) || defined(PUEB) || defined(PUEC) || defined(PUED) || defined(PUEE)
-	IRQ_PUE |= _BV(IRQ_BIT);
-#else
-	IRQ_PORT |= _BV(IRQ_BIT);
-#endif
-#endif
+	bcm2835_gpio_fsel(SI446X_IRQ_PIN, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(SI446X_IRQ_PIN, BCM2835_GPIO_PUD_UP);
+    bcm2835_gpio_fsel(SI446X_SDN_PIN, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_clr(SI446X_SDN_PIN);
 
-	spi_init();
-#endif
+    spi_init();
+
+
 
 	resetDevice();
 	applyStartupConfig();
@@ -506,10 +465,6 @@ void Si446x_init()
 
 	enabledInterrupts[IRQ_PACKET] = (1<<SI446X_PACKET_RX_PEND) | (1<<SI446X_CRC_ERROR_PEND);
 	//enabledInterrupts[IRQ_MODEM] = (1<<SI446X_SYNC_DETECT_PEND);
-
-#ifndef ARDUINO
-	// TODO Interrupt should trigger on low level, not falling edge?
-#endif
 
 	Si446x_irq_on(1);
 }
@@ -906,7 +861,7 @@ uint8_t Si446x_dump(void* buff, uint8_t group)
 	for(uint8_t i=0;i<sizeof(groupSizes);i+=2)
 	{
 		uint8_t buff[2];
-		memcpy_P(buff, &groupSizes[i], sizeof(buff));
+		memcpy(buff, &groupSizes[i], sizeof(buff));
 
 		if(buff[0] == group)
 		{

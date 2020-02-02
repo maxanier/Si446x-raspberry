@@ -9,21 +9,28 @@
 #ifndef SI446X_SPI_H_
 #define SI446X_SPI_H_
 
-#include <avr/io.h>
+#include <bcm2835.h>
 
 void spi_init(void);
 
-inline void spi_transfer_nr(uint8_t data)
+inline void spi_transfer_nr(unsigned char data)
 {
-	SPDR = data;
-	loop_until_bit_is_set(SPSR, SPIF);
+    bcm2835_spi_transfer(data);
 }
 
-inline uint8_t spi_transfer(uint8_t data)
+inline char spi_transfer(unsigned char data)
 {
-	SPDR = data;
-	loop_until_bit_is_set(SPSR, SPIF);
-	return SPDR;
+    return bcm2835_spi_transfer(data);
+}
+
+inline void spiSelect()
+{
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS0);                      /* default */
+}
+
+inline void spiDeselect()
+{
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE );                      /* default */
 }
 
 #endif /* SI446X_SPI_H_ */
